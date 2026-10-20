@@ -90,6 +90,11 @@ if [[ -f /usr/share/doc/fzf/examples/key-bindings.zsh ]]; then
   source /usr/share/doc/fzf/examples/completion.zsh
 fi
 
+# Oracle Linux / EPEL
+if [[ -f /usr/share/fzf/shell/key-bindings.zsh ]]; then
+  source /usr/share/fzf/shell/key-bindings.zsh
+fi
+
 # Local Git-cloned fzf
 if [[ -f "$HOME/.fzf/shell/key-bindings.zsh" ]]; then
   source "$HOME/.fzf/shell/key-bindings.zsh"
