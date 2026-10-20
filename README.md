@@ -30,6 +30,29 @@ brew install zsh neovim eza bat fd fzf zoxide starship ripgrep
 
 ## Setup
 
+### Automated installation (Ubuntu/Debian and Oracle Linux 8/9)
+
+After cloning this repository to `~/.config/zsh`, run as your normal user:
+
+```sh
+bash ~/.config/zsh/scripts/install.sh
+# To keep your current login shell:
+bash ~/.config/zsh/scripts/install.sh --skip-shell-change
+```
+
+The installer uses `sudo` for system packages and changing the login shell.
+Existing configuration files are backed up before replacement.
+
+On Oracle Linux, it installs Oracle's EPEL release package and enables the
+developer EPEL and CodeReady Builder repositories for dependency installation.
+It also installs `util-linux-user` for `chsh`. If `eza` is missing, it downloads
+the upstream static x86_64 build into `~/.local/bin` for compatibility with
+Oracle Linux 8's glibc. On other architectures, install `eza` manually first.
+Zoxide and Starship are installed using their upstream installers when missing.
+Internet access to Oracle's repositories and GitHub is required.
+
+### Manual installation
+
 **1. Clone the repo**
 
 ```sh

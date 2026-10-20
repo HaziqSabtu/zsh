@@ -4,9 +4,9 @@ set -euo pipefail
 usage() {
   printf '%s\n' \
     'Usage: bash install.sh [--skip-shell-change]' \
-    'Install the radleylewis Zsh setup for the current user on Ubuntu/Debian.' \
+    'Install the radleylewis Zsh setup on Ubuntu/Debian or Oracle Linux 8/9.' \
     'Existing configuration files are backed up before replacement.' \
-    'Run as your normal user, not with sudo. sudo is used for apt and chsh.'
+    'Run as your normal user, not with sudo. sudo is used for packages and chsh.'
 }
 
 change_shell=true
@@ -23,7 +23,23 @@ fi
 
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 (( EUID != 0 )) || die 'Run as your normal user, not root.'
-command -v apt-get >/dev/null || die 'This installer requires Ubuntu/Debian with apt-get.'
+package_manager=apt
+if [[ -r /etc/os-release ]]; then
+  . /etc/os-release
+fi
+if [[ "${ID:-}" == ol ]]; then
+  oracle_version=${VERSION_ID:-}
+  oracle_version=${oracle_version%%.*}
+  case "$oracle_version" in
+    8|9) ;;
+    *) die "Unsupported Oracle Linux version: ${VERSION_ID:-unknown}. Expected 8 or 9." ;;
+  esac
+  command -v dnf >/dev/null || die 'Oracle Linux requires dnf.'
+  package_manager=dnf
+else
+  command -v apt-get >/dev/null ||
+    die 'This installer requires Ubuntu/Debian with apt-get or Oracle Linux 8/9 with dnf.'
+fi
 command -v sudo >/dev/null || die 'sudo is required for package installation.'
 
 config_dir="$HOME/.config/zsh"
@@ -50,11 +66,29 @@ replace_file() {
 }
 
 printf 'Installing system packages...\n'
-sudo apt-get update
-sudo apt-get install -y --no-install-recommends \
-  zsh git curl ca-certificates neovim eza bat fd-find fzf ripgrep
+if [[ "$package_manager" == dnf ]]; then
+  sudo dnf install -y "oracle-epel-release-el${oracle_version}"
+  sudo dnf --enablerepo="ol${oracle_version}_developer_EPEL" \
+    --enablerepo="ol${oracle_version}_codeready_builder" install -y \
+    zsh git curl ca-certificates neovim bat fd-find fzf ripgrep util-linux-user tar gzip
+else
+  sudo apt-get update
+  sudo apt-get install -y --no-install-recommends \
+    zsh git curl ca-certificates neovim eza bat fd-find fzf ripgrep
+fi
 
 mkdir -p "$HOME/.local/bin" "$HOME/.local/state/zsh" "$HOME/.cache/zsh"
+if [[ "$package_manager" == dnf ]] && ! command -v eza >/dev/null; then
+  [[ "$(uname -m)" == x86_64 ]] ||
+    die 'Automatic eza installation requires x86_64. Install eza manually and rerun.'
+  # Use the static build because Oracle Linux 8 has an older glibc.
+  curl -fsSL https://github.com/eza-community/eza/releases/latest/download/eza_x86_64-unknown-linux-musl.tar.gz \
+    -o "$work_dir/eza.tar.gz"
+  mkdir "$work_dir/eza"
+  tar -xzf "$work_dir/eza.tar.gz" -C "$work_dir/eza"
+  [[ -f "$work_dir/eza/eza" ]] || die 'eza binary not found in downloaded archive.'
+  install -m 755 "$work_dir/eza/eza" "$HOME/.local/bin/eza"
+fi
 for tool in bat fd; do
   if ! command -v "$tool" >/dev/null; then
     case "$tool" in
